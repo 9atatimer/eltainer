@@ -1,7 +1,8 @@
 # Plan: Cluster API (CAPI) — browse and manage workload clusters
 
-Status: **proposal** — nothing here is implemented yet.  This document
-is the design to review before writing code.
+Status: **v1 shipped** — read-only cluster browser + kubeconfig pivot
+landed in `k8s/k8s-capi.el` (`G` on the dashboard / `M-x k8s-capi`).
+Lifecycle writes (§7) and the niceties (§9) are still pending.
 
 ## Goal
 
@@ -66,8 +67,9 @@ Two complementary linkages:
 
 ## 2. The Clusters view (magit-section layout)
 
-A new buffer `*k8s:clusters*` (mode derived from `magit-section-mode`,
-per the UI conventions).  Target rendering:
+A new buffer `*k8s:capi*` (mode derived from `magit-section-mode`,
+per the UI conventions; the `*k8s:` prefix means a context-switch's
+buffer cleanup catches it).  Target rendering:
 
 ```
 Cluster prod-eu  (Provisioned)             infra: AWS    k8s v1.30.2
@@ -100,16 +102,20 @@ No new gauge code.  Reuse:
 
 ## 4. Detection & dashboard gating
 
-A management cluster is detectable: the `cluster.x-k8s.io` API group
-(equivalently the `clusters.cluster.x-k8s.io` CRD) is served.  Reuse
-the CRD listing already in `k8s-crds.el` to probe once, and gate a
-dashboard launcher row on it — the same conditional-launcher pattern
-the dashboard already uses.  On a non-management cluster the launcher
-simply doesn't appear.
+**Shipped (revised from the original gating proposal).**  The
+dashboard lists every view unconditionally — gating one launcher on a
+live CRD probe would be inconsistent with that and would need an API
+call at dashboard-render time (when there may be no connection).  So
+the `G` launcher is always present, and detection happens *inside* the
+view instead: `k8s-capi--collect` probes the CRD list via
+`k8s-crds-list`, and when the `cluster.x-k8s.io` `Cluster` CRD is
+absent it returns nil and the view renders a one-line "not a CAPI
+management cluster" message — the same graceful-empty-state pattern
+`k8s-crds` uses for "(no CRDs installed)".
 
-The launcher row goes in `eltainer-views` (a `defconst` — so the new
-row actually shows up on `eltainer-reload`; a `defvar` would be a
-silent no-op, see the reload notes in CLAUDE.md).
+The launcher row lives in `eltainer-views` (a `defconst` — so the new
+row shows up on `eltainer-reload`; a `defvar` would be a silent no-op,
+see the reload notes in CLAUDE.md).
 
 ## 5. Read path
 
@@ -144,13 +150,14 @@ This is the feature that makes "manage multiple clusters" real: list
 every cluster in the mgmt cluster, drill into any one, browse it, come
 back.  It leans entirely on machinery that already exists.
 
-**Open question (resolve before coding §6):** how to feed an *inline*
-kubeconfig to a switch path that currently discovers *files*.  Two
-options: (a) write the decoded kubeconfig to a `0600` file under a
-cache dir and switch to it (simplest; reuses everything; needs a
-cleanup story for admin creds on disk), or (b) teach the connection
-layer to accept kubeconfig bytes directly (cleaner, more work).  Lean
-(a) for v1.
+**Resolved — shipped as option (a).**  The decoded kubeconfig is
+written to a `0600` file under `k8s-capi-kubeconfig-cache-dir`
+(default `$XDG_CACHE_HOME/eltainer/capi`) and handed to the existing
+file-based switch via `eltainer--apply-context-switch`.  This reused
+everything and was the simplest cut.  One caveat carried forward:
+these files hold cluster-admin creds and are not yet garbage-collected
+— a cleanup story (or option (b), teaching the connection layer to
+accept kubeconfig bytes directly) is future work.
 
 ## 7. Lifecycle / write actions (day-2)
 
@@ -243,14 +250,16 @@ be cleanly ERT-tested — note that in the PR rather than implying it is.
 
 ## 12. Rollout / order of work
 
-1. **v1 — read-only browser + pivot.**
-   - `k8s-capi.el`: list paths + per-CRD version discovery → parse →
-     the `*k8s:clusters*` section tree → phase/conditions/replica
-     rendering.
-   - Launcher gating on the `cluster.x-k8s.io` group; row in
-     `eltainer-views`.
+1. **v1 — read-only browser + pivot. — SHIPPED**
+   - `k8s-capi.el`: per-CRD version discovery → fetch → label-grouped
+     `*k8s:capi*` section tree → phase/replica rendering.
+   - Unconditional `G` launcher in `eltainer-views`; detection +
+     graceful empty state inside the view (§4).
    - The kubeconfig pivot (§6, option (a)).
-   - Fixtures (kind+CAPD) + ERT; README + NEWS.
+   - ERT in `test/test-capi.el` over hand-authored inline fixtures
+     (no live CAPI cluster was available to capture kind+CAPD
+     fixtures; that capture is still worth doing — see §11).  README +
+     NEWS updated.
 2. **v2 — lifecycle writes.** Scale, pause/resume, delete-machine,
    delete-cluster, trigger-upgrade (§7), each behind a confirm; tests
    per action.

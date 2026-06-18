@@ -83,6 +83,7 @@
       ("A" "Sandboxes"     k8s-sandboxes)
       ("H" "Helm releases" k8s-helm)
       ("R" "Custom resources (CRDs)" k8s-crds)
+      ("G" "Clusters (CAPI)" k8s-capi)
       ;; Single-key dashboard launchers — avoid keys magit-section
       ;; uses for navigation (`n', `p', `TAB') and the dashboard's
       ;; own explicit bindings (`b' kubeconfig-switch, `g' refresh,

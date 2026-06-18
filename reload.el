@@ -55,6 +55,7 @@
     "k8s"
     "k8s-helm"
     "k8s-crds"
+    "k8s-capi"
     "k8s-pulse"
     "k8s-xray"
     "k8s-edit"

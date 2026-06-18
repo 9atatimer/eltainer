@@ -100,6 +100,7 @@ transport, `docker-credential-*` helpers, and Kubernetes
 | Kubernetes | `m` / `x` | ConfigMaps / Secrets |
 | Kubernetes | `o` | Nodes (roles, conditions, live perf gauges) |
 | Kubernetes | `A` | Sandboxes (agent-sandbox SIG — `agents.x-k8s.io`) |
+| Kubernetes | `G` | Clusters (Cluster API) — `RET` pivots into a workload cluster |
 | — | `b` | Switch Kubernetes context (across all discovered kubeconfigs) |
 | — | `g` | Refresh dashboard |
 
@@ -251,6 +252,26 @@ flips immediately: any open `*k8s:…*` buffers are killed so they
 re-open against the new context the next time you visit them.
 Same muscle memory as `b` in magit for branches.
 
+### Cluster API (CAPI)
+
+`G` (on the dashboard, or `M-x k8s-capi`) opens the Clusters view when
+you're pointed at a [Cluster API](https://cluster-api.sigs.k8s.io/)
+**management cluster** — the one pane lists every workload cluster it
+owns, each as a collapsible tree: `Cluster` → its control plane
+(`KubeadmControlPlane`) and `MachineDeployment`s → `MachineSet`s →
+`Machine`s, with phase and ready/desired replica counts at every
+level.  It's built entirely on the API server (no `clusterctl`, no
+`kubectl`), so it works against any provider; on a non-management
+cluster the view just says so.
+
+`RET` on a `Cluster` row **pivots** eltainer into that workload
+cluster: it reads the `<cluster>-kubeconfig` Secret CAPI publishes,
+caches it (mode 0600, under `k8s-capi-kubeconfig-cache-dir`), and
+switches the active context to it — so you can list a cluster, drop
+into it to browse its pods/nodes, and `b` back, all without leaving
+Emacs.  (Read-only browsing + pivot today; scale / pause / delete /
+upgrade are planned — see `docs/capi-plan.md`.)
+
 ### Stopping everything
 
 `M-x eltainer-stop-all` is the panic button.  It kills every
@@ -324,6 +345,7 @@ k8s/
   k8s-helm.el            Read-only Helm 3 view (decodes release secrets directly)
   k8s-traffic.el         Per-Service ingress/egress aggregation + M-buffer
   k8s-crds.el            Generic CRD browser (auto-detects + renders printer-columns)
+  k8s-capi.el            Cluster API browser: workload-cluster tree + kubeconfig pivot
   k8s-pulse.el           Cluster-pulse dashboard (phase counts, top consumers, events)
   k8s-xray.el            Recursive resource-tree view of a workload
   k8s-edit.el            Edit any resource's YAML in place, PUT-on-apply

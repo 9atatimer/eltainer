@@ -11,6 +11,32 @@ the in-flight backlog.
 
 ---
 
+## 2026-06-08
+
+### Cluster API (CAPI) cluster browser + pivot (`G`)
+
+`G` on the dashboard (or `M-x k8s-capi`) opens a new Clusters view for
+Cluster API **management clusters**: every workload cluster the
+management cluster owns, rendered as a collapsible tree — `Cluster` →
+control plane (`KubeadmControlPlane`) and `MachineDeployment`s →
+`MachineSet`s → `Machine`s — with phase and ready/desired replica
+counts at each level.  It's read directly off the API server, so it
+needs no `clusterctl`/`kubectl` and works with any infrastructure
+provider; on a non-management cluster it just says CAPI isn't
+installed.
+
+`RET` on a `Cluster` row **pivots** eltainer into that workload
+cluster — it fetches the `<cluster>-kubeconfig` Secret CAPI publishes,
+caches it (mode 0600), and switches the active context — so you can
+list clusters, drop into one to browse its pods/nodes, and `b` back
+out. Read-only browsing + pivot for now; lifecycle actions (scale /
+pause / delete / upgrade) are planned.
+
+| Key | Action |
+|-----|--------|
+| `G` | Open the Clusters (CAPI) view from the dashboard |
+| `RET` | Pivot into the workload cluster under point |
+
 ## 2026-05-29
 
 ### Always-visible key-hint strip (`key-hints-mode`)
